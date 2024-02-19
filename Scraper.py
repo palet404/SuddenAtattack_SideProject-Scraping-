@@ -51,3 +51,21 @@ def TagsScraper(url, tag_names, class_names, target_tags):
 # questions_df = scrape_questions(url, tag_names, class_names, target_tags)
 # print(questions_df)
     
+# 웹페이지의 URL
+url = '웹사이트의 URL을 여기에 입력하세요'
+
+# 해당 URL에 GET 요청을 보내고 응답을 받음
+response = requests.get(url)
+
+# 응답의 상태코드가 200인지 확인
+if response.status_code == 200:
+    # HTML을 BeautifulSoup으로 파싱
+    soup = BeautifulSoup(response.text, 'html.parser')
+
+    # 클래스가 "question-container"인 요소를 찾음
+    element = soup.find(class_='question-container')
+
+    # 찾은 요소 출력
+    print(element)
+else:
+    print('Error:', response.status_code)
