@@ -2,6 +2,8 @@ import requests
 from bs4 import BeautifulSoup
 import pandas as pd
 import markdown
+import os
+from datetime import datetime
 
 def TagsScraper(url, tag_names, class_names, target_tags):
     """
@@ -44,28 +46,42 @@ def TagsScraper(url, tag_names, class_names, target_tags):
 
 # 태그를 ClassName으로 하는 DF 반환하는 코드
      
-# url = "https://www.inflearn.com/community/studies?page=1&order=recent"
-# tag_names = ['li', 'div']
-# class_names = ['question-container', 'another-class']
-# target_tags = [{'name': 'h3', 'class': 'title__text'}, {'name': 'p', 'class': 'question__body'}]
-# questions_df = scrape_questions(url, tag_names, class_names, target_tags)
-# print(questions_df)
-    
-# 웹페이지의 URL
-url = '웹사이트의 URL을 여기에 입력하세요'
+url = "https://www.inflearn.com/community/studies?page=1&order=recent"
+tag_names = ['li', 'div']
+class_names = ['question-container', 'another-class']
+target_tags = [{'name': 'h3', 'class': 'title__text'}, {'name': 'p', 'class': 'question__body'}]
+questions_df = TagsScraper(url, tag_names, class_names, target_tags)
+print(questions_df)
 
-# 해당 URL에 GET 요청을 보내고 응답을 받음
-response = requests.get(url)
+def GetElement(url, class_name):
+    # 해당 URL에 GET 요청을 보내고 응답을 받음
+    response = requests.get(url)
 
-# 응답의 상태코드가 200인지 확인
-if response.status_code == 200:
-    # HTML을 BeautifulSoup으로 파싱
-    soup = BeautifulSoup(response.text, 'html.parser')
+    # 응답의 상태코드가 200인지 확인
+    if response.status_code == 200:
+        # HTML을 BeautifulSoup으로 파싱
+        soup = BeautifulSoup(response.text, 'html.parser')
 
-    # 클래스가 "question-container"인 요소를 찾음
-    element = soup.find(class_='question-container')
+        # 클래스가 주어진 class_name인 요소를 찾음
+        elements = soup.find_all(class_=class_name)
 
-    # 찾은 요소 출력
-    print(element)
-else:
-    print('Error:', response.status_code)
+        return elements
+    else:
+        print('Error:', response.status_code)
+        return None
+
+url = 'https://www.inflearn.com/community/studies?page=1&order=recent'
+class_name = 'question-container'
+
+elements = GetElement(url, class_name)
+if elements:
+    # 파일명 생성
+    now = datetime.now()
+    file_name = now.strftime("%Y-%m-%d-%H-%M") + ".txt"
+
+    # 파일에 요소(element) 내용 쓰기
+    with open(file_name, "w", encoding="utf-8") as file:
+        for idx, element in enumerate(elements, start=1):
+            file.write(f"Element {idx}:\n{element}\n\n")
+
+    print(f"Elements saved to '{file_name}' successfully.")
