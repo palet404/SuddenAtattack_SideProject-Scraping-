@@ -44,14 +44,13 @@ def TagsScraper(url, tag_names, class_names, target_tags):
         print('Error:', response.status_code)
         return None
 
-# 태그를 ClassName으로 하는 DF 반환하는 코드
-     
-url = "https://www.inflearn.com/community/studies?page=1&order=recent"
-tag_names = ['li', 'div']
-class_names = ['question-container', 'another-class']
-target_tags = [{'name': 'h3', 'class': 'title__text'}, {'name': 'p', 'class': 'question__body'}]
-questions_df = TagsScraper(url, tag_names, class_names, target_tags)
-print(questions_df)
+# # 태그를 ClassName으로 하는 DF 반환하는 코드
+# url = "https://www.inflearn.com/community/studies?page=1&order=recent"
+# tag_names = ['li', 'div','a']
+# class_names = ['question-container', 'another-class','e-click-post']
+# target_tags = [{'name': 'h3', 'class': 'title__text'}, {'name': 'p', 'class': 'question__body'},{'name': 'href', 'tag': 'a', 'class': 'e-click-post'}]
+# questions_df = TagsScraper(url, tag_names, class_names, target_tags)
+# questions_df.to_csv('question_df_StripText.csv',encoding='utf-8-sig')
 
 def GetElement(url, class_name):
     # 해당 URL에 GET 요청을 보내고 응답을 받음
@@ -70,18 +69,19 @@ def GetElement(url, class_name):
         print('Error:', response.status_code)
         return None
 
-url = 'https://www.inflearn.com/community/studies?page=1&order=recent'
-class_name = 'question-container'
+## ClassName인 태그와 하위태그를 모두 긁는 방법
+# url = 'https://www.inflearn.com/community/studies?page=1&order=recent'
+# class_name = 'question-container'
 
-elements = GetElement(url, class_name)
-if elements:
-    # 파일명 생성
-    now = datetime.now()
-    file_name = now.strftime("%Y-%m-%d-%H-%M") + ".txt"
+# elements = GetElement(url, class_name)
+# if elements:
+#     # 파일명 생성
+#     now = datetime.now()
+#     file_name = now.strftime("%Y-%m-%d-%H-%M") + ".txt"
 
-    # 파일에 요소(element) 내용 쓰기
-    with open(file_name, "w", encoding="utf-8") as file:
-        for idx, element in enumerate(elements, start=1):
-            file.write(f"Element {idx}:\n{element}\n\n")
+#     # 파일에 요소(element) 내용 쓰기
+#     with open(file_name, "w", encoding="utf-8") as file:
+#         for idx, element in enumerate(elements, start=1):
+#             file.write(f"Element {idx}:\n{element}\n\n")
 
-    print(f"Elements saved to '{file_name}' successfully.")
+#     print(f"Elements saved to '{file_name}' successfully.")
