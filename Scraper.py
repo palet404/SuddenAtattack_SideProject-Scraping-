@@ -1,9 +1,11 @@
 import requests
 from bs4 import BeautifulSoup
 import pandas as pd
-import markdown
-import os
 from datetime import datetime
+from queue import Queue
+from datetime import datetime, timedelta
+
+
 
 def TagsScraper(url, tag_names, class_names, target_tags):
     """
@@ -52,36 +54,115 @@ def TagsScraper(url, tag_names, class_names, target_tags):
 # questions_df = TagsScraper(url, tag_names, class_names, target_tags)
 # questions_df.to_csv('question_df_StripText.csv',encoding='utf-8-sig')
 
-def GetElement(url, class_name):
-    # 해당 URL에 GET 요청을 보내고 응답을 받음
+def Is_within_days(time_string,reference_date):
+    """
+   주어진 기준일(reference_date)로부터 몇 일 이내인지를 확인하는 함수입니다.
+
+    Parameters:
+    - time_string (str): 시간을 나타내는 문자열입니다. 예를 들어 "5일 전"과 같은 형식입니다.
+    - reference_date (int): 기준일로부터의 일 수를 나타내는 정수입니다.
+
+    Returns:
+    - bool: 기준일로부터 몇 일 이내이면 True, 그렇지 않으면 False를 반환합니다.    """
+
+    if "방금" in time_string:
+        return True
+    elif "분 전" in time_string:
+        return True
+    elif "시간 전" in time_string:
+        return True
+    elif "일 전" in time_string:
+        time_ago = int(time_string.split("일")[0])
+        if time_ago <= reference_date :
+            return True
+    elif "달 전" in time_string:
+        return False
+    else :
+        return False
+
+def Search_Element(elements, target_class, target_tag, reference_date):
+    Result_Queue = Queue()
+
+    for element in elements : 
+     element_prettify = element.prettify()
+     date_check = element.find(class_=target_class).find_all(target_tag)
+     date_check = [tag.get_text() for tag in date_check]
+     time_string = date_check[2]
+     IsWithIn= Is_within_days(time_string, reference_date)
+     if IsWithIn :
+         Result_Queue.put(element_prettify)
+     else :
+         return Result_Queue
+    
+    return Result_Queue
+
+def Search_Element_WithInDays(target_class, target_class_In, target_tag, reference_date):
+
+    Result_Queue = Queue()
+
+    for page in range(1,100):
+        url = f'https://www.inflearn.com/community/studies?page={page}&order=recent'
+        response = requests.get(url)
+        soup = BeautifulSoup(response.text,"html.parser")
+        elements= soup.find_all(class_ = target_class)
+    
+        for element in elements : 
+            element_prettify = element.prettify()
+            date_check = element.find(class_=target_class_In).find_all(target_tag)
+            date_check = [tag.get_text() for tag in date_check]
+            time_string = date_check[2]
+            IsWithIn= Is_within_days(time_string, reference_date)
+            if IsWithIn :
+                Result_Queue.put(element_prettify)
+            else :
+                return Result_Queue
+    
+    return Result_Queue
+    
+class_name = 'question-container'
+target_class = "question__info-detail"
+target_tag = "span"
+reference_date = 7
+
+Result_Ele = Queue()
+
+for page in range(1,100) :
+    url = f'https://www.inflearn.com/community/studies?page={page}&order=recent'
     response = requests.get(url)
+    soup = BeautifulSoup(response.text,"html.parser")
+    # GetElement from target class name
+    elements= soup.find_all(class_ = "question-container")
+    PageTargetElements = Search_Element(elements, target_class, target_tag, reference_date)
+    while not PageTargetElements.empty():
+        print(PageTargetElements.get())
 
-    # 응답의 상태코드가 200인지 확인
-    if response.status_code == 200:
-        # HTML을 BeautifulSoup으로 파싱
-        soup = BeautifulSoup(response.text, 'html.parser')
+    if PageTargetElements.qsize() < 20:
+        while not PageTargetElements.empty():
+            PageTargetEle = PageTargetElements.get()
+            Result_Ele.put(PageTargetEle)
+            print(PageTargetEle)
+        break
 
-        # 클래스가 주어진 class_name인 요소를 찾음
-        elements = soup.find_all(class_=class_name)
+    else :
+        while not PageTargetElements.empty():
+            PageTargetEle = PageTargetElements.get()
+            print(PageTargetEle)
+            Result_Ele.put(PageTargetEle)
+            
 
-        return elements
-    else:
-        print('Error:', response.status_code)
-        return None
+#with open('Result_Ele.txt', 'w') as file:
+#    while not Result_Ele.empty():
+#        element = Result_Ele.get()  # 큐에서 요소를 가져옴
+#        file.write(str(element) + '\n')  # 요소를 파일에 씁니다.
+    
 
-## ClassName인 태그와 하위태그를 모두 긁는 방법
-# url = 'https://www.inflearn.com/community/studies?page=1&order=recent'
-# class_name = 'question-container'
+## Get prettified HTML element from target class and tag
 
-# elements = GetElement(url, class_name)
-# if elements:
-#     # 파일명 생성
-#     now = datetime.now()
-#     file_name = now.strftime("%Y-%m-%d-%H-%M") + ".txt"
+## Return element_preetify as File
+#for i, element_prettify in enumerate(elements_prettify, start=1):
+#    with open(f"element_{i}.html", "w", encoding="utf-8") as file:
+#        file.write(element_prettify)
 
-#     # 파일에 요소(element) 내용 쓰기
-#     with open(file_name, "w", encoding="utf-8") as file:
-#         for idx, element in enumerate(elements, start=1):
-#             file.write(f"Element {idx}:\n{element}\n\n")
-
-#     print(f"Elements saved to '{file_name}' successfully.")
+#Get CSS From target site
+##element_css = soup.find_all('link', rel='stylesheet')
+##print(element_css)
