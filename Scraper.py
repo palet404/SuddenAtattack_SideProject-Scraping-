@@ -4,8 +4,7 @@ import pandas as pd
 from datetime import datetime
 from queue import Queue
 from datetime import datetime, timedelta
-
-
+from time import sleep
 
 def TagsScraper(url, tag_names, class_names, target_tags):
     """
@@ -80,23 +79,24 @@ def Is_within_days(time_string,reference_date):
     else :
         return False
 
-def Search_Element(elements, target_class, target_tag, reference_date):
+def Search_Element_WithInDays(elements, target_class, tag_with_date, reference_date):
     Result_Queue = Queue()
 
     for element in elements : 
-     element_prettify = element.prettify()
-     date_check = element.find(class_=target_class).find_all(target_tag)
-     date_check = [tag.get_text() for tag in date_check]
-     time_string = date_check[2]
-     IsWithIn= Is_within_days(time_string, reference_date)
-     if IsWithIn :
-         Result_Queue.put(element_prettify)
-     else :
-         return Result_Queue
+        element_prettify = element.prettify()
+        date_check = element.find(class_=target_class).find_all(tag_with_date)
+        date_check = [tag.get_text() for tag in date_check]
+        time_string = date_check[2]
+        IsWithIn= Is_within_days(time_string, reference_date)
+        if IsWithIn :
+            Result_Queue.put(element_prettify)
+        else :
+            return Result_Queue
     
     return Result_Queue
 
-def Search_Element_WithInDays(target_class, target_class_In, target_tag, reference_date):
+# Problem with rotating URL
+def Search_Element_WithInDays_UsingInnerForLoop(target_class, target_class_In, target_attr, reference_date):
 
     Result_Queue = Queue()
 
@@ -108,7 +108,7 @@ def Search_Element_WithInDays(target_class, target_class_In, target_tag, referen
     
         for element in elements : 
             element_prettify = element.prettify()
-            date_check = element.find(class_=target_class_In).find_all(target_tag)
+            date_check = element.find(class_=target_class_In).find_all(target_attr)
             date_check = [tag.get_text() for tag in date_check]
             time_string = date_check[2]
             IsWithIn= Is_within_days(time_string, reference_date)
@@ -119,50 +119,162 @@ def Search_Element_WithInDays(target_class, target_class_In, target_tag, referen
     
     return Result_Queue
     
+######################################### Main_Code ################################################
+
+InflearnSiteURL = "https://www.inflearn.com"
+
+Inflearn_studies = Queue()
+Inflearn_PostLinkURL = Queue()
+Inflearn_PostBodys = Queue()
+Inflearn_study_Writedays = Queue()
+
+#Needed to extract it after for-loop(rotating pages), it contains <scrpit>in it
+Inflearn_studylist_css = 0
+Inflearn_study_post_css = 0
+
+## Get elements from target site(inflearn) according to reference_date
 class_name = 'question-container'
 target_class = "question__info-detail"
-target_tag = "span"
+# tag_with_date, site below(refer to url) is <span> and parents tag is "question__info-detail"
+tag_with_date = "span"
 reference_date = 7
 
-Result_Ele = Queue()
 
-for page in range(1,100) :
-    url = f'https://www.inflearn.com/community/studies?page={page}&order=recent'
-    response = requests.get(url)
-    soup = BeautifulSoup(response.text,"html.parser")
-    # GetElement from target class name
-    elements= soup.find_all(class_ = "question-container")
-    PageTargetElements = Search_Element(elements, target_class, target_tag, reference_date)
-    while not PageTargetElements.empty():
-        print(PageTargetElements.get())
+for page in range(1,5) :
+    Inflearn_studylist_url = f'https://www.inflearn.com/community/studies?page={page}&order=recent'
+    StudylistResponse = requests.get(Inflearn_studylist_url)
+    Studylist = BeautifulSoup(StudylistResponse.text,"html.parser")
+    # GetElements from target class name('question-container' in inflearn)
+    elements= Studylist.find_all(class_ = class_name)
+    # GetElementsQuque Within reference_date
+    TargetPageElements = Search_Element_WithInDays(elements, target_class, tag_with_date, reference_date)
+    # Get studylist css, for one time (comparing type of var)
+    if type(Inflearn_studylist_css) == int:
+        Inflearn_studylist_css = Studylist.find_all('link', rel='stylesheet')
 
-    if PageTargetElements.qsize() < 20:
-        while not PageTargetElements.empty():
-            PageTargetEle = PageTargetElements.get()
-            Result_Ele.put(PageTargetEle)
-            print(PageTargetEle)
+    # TargetPageElements only contains within days(7days) ele
+    if TargetPageElements.qsize() == 20:
+        while not TargetPageElements.empty():
+
+            TargetPageEle = TargetPageElements.get()
+            Inflearn_studies.put(TargetPageEle)
+            
+            # Get Detail Post Link from TargetPageEle(question-container)
+            TargetPageEle = BeautifulSoup(TargetPageEle,'html.parser')
+            DetailPostLink = TargetPageEle.find(class_='e-click-post').get('href')
+            ## Branch => If wanna extract Link from this code, : using for-loop, 
+            DetailPostLink = InflearnSiteURL+DetailPostLink
+
+            Inflearn_PostLinkURL.put(DetailPostLink)
+            # Get Detail Post
+            DetailStudyPageResponse = requests.get(DetailPostLink)
+            DetailStudyPage = BeautifulSoup(DetailStudyPageResponse.text,'html.parser')
+            DetailStudyPageBody = DetailStudyPage.find(class_='content__body markdown-body')
+            DetailStudyPageBody = DetailStudyPageBody.prettify()
+
+            Inflearn_PostBodys.put(DetailStudyPageBody)
+
+            StudyWriteDate = DetailStudyPage.find_all('span', class_='sub-title sub-title__created-at')
+            # Get post write date from Body
+            for element in StudyWriteDate:
+                WriteDate = element.find('span',class_='sub-title__value').text.strip()
+                StudyWriteDate = WriteDate
+                StudyWriteDate = '20'+StudyWriteDate
+                Inflearn_study_Writedays.put(StudyWriteDate)
+
+            # Avoding requests limits(It request 20times posts per each loop upon )
+            sleep(1)
+            
+            print(TargetPageEle)
+            print(DetailPostLink)
+            print(DetailStudyPageBody)
+            print(StudyWriteDate)
+
+        
+
+    # elif TargetPageQueue size smaller than 20, the page has element older than reference_date
+    elif TargetPageElements.qsize() < 20 :
+        while not TargetPageElements.empty():
+
+            TargetPageEle = TargetPageElements.get()
+            Inflearn_studies.put(TargetPageEle)
+            
+            # Get Detail Post Link from TargetPageEle(question-container)
+            TargetPageEle = BeautifulSoup(TargetPageEle,'html.parser')
+            DetailPostLink = TargetPageEle.find(class_='e-click-post').get('href')
+            DetailPostLink = InflearnSiteURL+DetailPostLink
+
+            Inflearn_PostLinkURL.put(DetailPostLink)
+            # Get Detail Post
+            DetailStudyPageResponse = requests.get(DetailPostLink)
+            DetailStudyPage = BeautifulSoup(DetailStudyPageResponse.text,'html.parser')
+            DetailStudyPageBody = DetailStudyPage.find(class_='content__body markdown-body')
+            DetailStudyPageBody = DetailStudyPageBody.prettify()
+
+            Inflearn_PostBodys.put(DetailStudyPageBody)
+
+            StudyWriteDate = DetailStudyPage.find_all('span', class_='sub-title sub-title__created-at')
+
+            # Get post write date from Body
+            for element in StudyWriteDate:
+                WriteDate = element.find('span',class_='sub-title__value').text.strip()
+                StudyWriteDate = WriteDate
+                StudyWriteDate = '20'+StudyWriteDate
+                Inflearn_study_Writedays.put(StudyWriteDate)
+
+            # Get post css, for one time (comparing type of var)
+            if type(Inflearn_study_post_css) == int:
+                Inflearn_study_post_css = DetailStudyPage.find_all('link', rel='stylesheet')
+
+            print(TargetPageEle)
+            print(DetailPostLink)
+            print(DetailStudyPageBody)
+            print(StudyWriteDate)
+
+            # Avoding requests limits(It request 20times posts per each loop upon )
+            sleep(1)
+
+
         break
 
-    else :
-        while not PageTargetElements.empty():
-            PageTargetEle = PageTargetElements.get()
-            print(PageTargetEle)
-            Result_Ele.put(PageTargetEle)
-            
+# ##Get CSS From target site
+# # element_css = soup.find_all('link', rel='stylesheet')
+# # print(element_css)
 
-#with open('Result_Ele.txt', 'w') as file:
-#    while not Result_Ele.empty():
-#        element = Result_Ele.get()  # 큐에서 요소를 가져옴
-#        file.write(str(element) + '\n')  # 요소를 파일에 씁니다.
-    
+####################################################################################################
 
-## Get prettified HTML element from target class and tag
+# with open('ResultOfSearch_Element_WithInDays(forTest).html','r', encoding='utf-8') as file:
+#     html_content = file.read()
 
-## Return element_preetify as File
-#for i, element_prettify in enumerate(elements_prettify, start=1):
-#    with open(f"element_{i}.html", "w", encoding="utf-8") as file:
-#        file.write(element_prettify)
+# InflearnSiteURL = "https://www.inflearn.com"
 
-#Get CSS From target site
-##element_css = soup.find_all('link', rel='stylesheet')
-##print(element_css)
+# soup = BeautifulSoup(html_content,'html.parser')
+# # Get Detail Post link from 'class = question-container'
+# DetailLink = soup.find(class_='e-click-post').get('href')
+# DetailLink = InflearnSiteURL+DetailLink
+
+# response = requests.get(DetailLink)
+# DetailStudyPage = BeautifulSoup(response.text,'html.parser')
+
+# # Get Detail Post Body From URL
+# DetailStudyPageBody = DetailStudyPage.find(class_='content__body markdown-body')
+# StudyWriteDate = DetailStudyPage.find_all('span', class_='sub-title sub-title__created-at')
+
+# # Get post write date from Body
+# for element in StudyWriteDate:
+#     WriteDate = element.find('span',class_='sub-title__value').text.strip()
+#     StudyWriteDate = WriteDate
+#     StudyWriteDate = '20'+StudyWriteDate
+
+# print(DetailStudyPageBody)
+# print("---------------StudyWriteDate------------------")
+# print(StudyWriteDate)
+
+
+# Write detail Study Page
+# output_file = 'DetailStudyPage'
+
+# with open(output_file, "w", encoding='utf-8') as file:
+#     file.write(DetailStudyPage.prettify())
+
+# print(f"HTML 파일이 {output_file}에 저장되었습니다.")
