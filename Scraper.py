@@ -5,6 +5,7 @@ from datetime import datetime
 from queue import Queue
 from datetime import datetime, timedelta
 from time import sleep
+from DBLoder import create_dynamic_table, load_data_to_database
 
 def TagsScraper(url, tag_names, class_names, target_tags):
     """
@@ -140,7 +141,7 @@ tag_with_date = "span"
 reference_date = 7
 
 
-for page in range(1,5) :
+for page in range(1,2) :
     Inflearn_studylist_url = f'https://www.inflearn.com/community/studies?page={page}&order=recent'
     StudylistResponse = requests.get(Inflearn_studylist_url)
     Studylist = BeautifulSoup(StudylistResponse.text,"html.parser")
@@ -234,8 +235,29 @@ for page in range(1,5) :
             # Avoding requests limits(It request 20times posts per each loop upon )
             sleep(1)
 
-
         break
+
+table_name = "inflearn_study"
+columns = {
+    'Inflearn_studies': 'String',
+    'Inflearn_PostLinkURL' : 'String',
+    'Inflearn_PostBodys' : 'String',
+    'Inflearn_study_Writedays' : 'String'
+}
+
+InflearnTable = create_dynamic_table(table_name, columns)
+
+data = {
+    'Inflearn_studies': Inflearn_studies,
+    'Inflearn_PostLinkURL' : Inflearn_PostLinkURL,
+    'Inflearn_PostBodys' : Inflearn_PostBodys,
+    'Inflearn_study_Writedays' : Inflearn_study_Writedays
+}
+
+load_data_to_database(data, table_name, columns, database_url='sqlite:///my_database.db')
+
+Test = 1
+Test = "Test"
 
 # ##Get CSS From target site
 # # element_css = soup.find_all('link', rel='stylesheet')
@@ -269,7 +291,6 @@ for page in range(1,5) :
 # print(DetailStudyPageBody)
 # print("---------------StudyWriteDate------------------")
 # print(StudyWriteDate)
-
 
 # Write detail Study Page
 # output_file = 'DetailStudyPage'
