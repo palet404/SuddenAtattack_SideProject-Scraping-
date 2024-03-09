@@ -1,9 +1,8 @@
 from sqlalchemy import create_engine, Column, String, Integer, DateTime
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, synonym
 from queue import Queue
 
-Base = declarative_base()
 
 def create_dynamic_table(table_name, columns):
     """
@@ -16,14 +15,18 @@ def create_dynamic_table(table_name, columns):
     Returns:
         class: Dynamically created table class.
     """
+    Base = declarative_base()
+
     class DynamicTable(Base):
         __tablename__ = table_name
         id = Column(Integer, primary_key=True, autoincrement=True)
+        
         # Create columns dynamically
         for column_name, column_type in columns.items():
-
-            locals()[column_name] = Column(column_type)
-
+            column = Column(column_type)
+            setattr(DynamicTable, column_name, column)
+            setattr(DynamicTable, f'{column_name}_syn', synonym(column_name))
+            
     return DynamicTable
 
 def load_data_to_database(queue_dict, table_name, columns, database_url='sqlite:///:memory:'):

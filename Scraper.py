@@ -184,7 +184,6 @@ for page in range(1,2) :
                 Inflearn_study_Writedays.put(StudyWriteDate)
 
             # Avoding requests limits(It request 20times posts per each loop upon )
-            sleep(1)
             
             print(TargetPageEle)
             print(DetailPostLink)
@@ -233,7 +232,6 @@ for page in range(1,2) :
             print(StudyWriteDate)
 
             # Avoding requests limits(It request 20times posts per each loop upon )
-            sleep(1)
 
         break
 
@@ -245,8 +243,6 @@ columns = {
     'Inflearn_study_Writedays' : 'String'
 }
 
-InflearnTable = create_dynamic_table(table_name, columns)
-
 data = {
     'Inflearn_studies': Inflearn_studies,
     'Inflearn_PostLinkURL' : Inflearn_PostLinkURL,
@@ -256,8 +252,7 @@ data = {
 
 load_data_to_database(data, table_name, columns, database_url='sqlite:///my_database.db')
 
-Test = 1
-Test = "Test"
+
 
 # ##Get CSS From target site
 # # element_css = soup.find_all('link', rel='stylesheet')
