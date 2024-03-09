@@ -3,6 +3,8 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, synonym
 from queue import Queue
 
+Base = declarative_base()
+
 
 def create_dynamic_table(table_name, columns):
     """
@@ -15,7 +17,6 @@ def create_dynamic_table(table_name, columns):
     Returns:
         class: Dynamically created table class.
     """
-    Base = declarative_base()
 
     class DynamicTable(Base):
         __tablename__ = table_name
@@ -27,7 +28,8 @@ def create_dynamic_table(table_name, columns):
             setattr(DynamicTable, column_name, column)
             setattr(DynamicTable, f'{column_name}_syn', synonym(column_name))
             
-    return DynamicTable
+    return DynamicTable, DynamicTable.__tablename__
+
 
 def load_data_to_database(queue_dict, table_name, columns, database_url='sqlite:///:memory:'):
     """
@@ -39,16 +41,18 @@ def load_data_to_database(queue_dict, table_name, columns, database_url='sqlite:
         columns (dict): Dictionary where keys are column names and values are SQLAlchemy column types.
         database_url (str, optional): Database connection string. Defaults to 'sqlite:///:memory:' (in-memory SQLite database).
     """
+    
+    Base = declarative_base()
     engine = create_engine(database_url)
     Base.metadata.create_all(engine)
 
-    DynamicTable = create_dynamic_table(table_name, columns)
+    DynamicTableClass = create_dynamic_table(table_name, columns)
     Session = sessionmaker(bind=engine)
     session = Session()
 
     while not all(queue.empty() for queue in queue_dict.values()):
         row = {key: queue.get() for key, queue in queue_dict.items()}
-        table_row = DynamicTable(**row)
+        table_row = DynamicTableClass(**row)
         session.add(table_row)
 
     session.commit()
