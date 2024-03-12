@@ -4,7 +4,7 @@ import pandas as pd
 from datetime import datetime
 from queue import Queue
 from datetime import datetime, timedelta
-from time import sleep
+import time
 from DBsaver import create_table, save_data
 from sqlalchemy import String, Integer
 from urllib.parse import urlparse
@@ -158,110 +158,129 @@ target_class = "question__info-detail"
 tag_with_date = "span"
 reference_date = 7
 
+# Checking whether data is already extracted from Inflearn 
+Title = None
 
-for page in range(1,2) :
-    Inflearn_studylist_url = f'https://www.inflearn.com/community/studies?page={page}&order=recent'
-    StudylistResponse = requests.get(Inflearn_studylist_url)
-    Studylist = BeautifulSoup(StudylistResponse.text,"html.parser")
-    # GetElements from target class name('question-container' in inflearn)
-    elements= Studylist.find_all(class_ = class_name)
-    # GetElementsQuque Within reference_date
-    TargetPageElements = Search_Element_WithInDays(elements, target_class, tag_with_date, reference_date)
-    # Get studylist css, for one time (comparing type of var)
-    if type(Inflearn_studylist_css) == int:
-        Inflearn_studylist_css = Studylist.find_all('link', rel='stylesheet')
+while True:
+    for page in range(1,2) :
+        Inflearn_studylist_url = f'https://www.inflearn.com/community/studies?page={page}&order=recent'
+        StudylistResponse = requests.get(Inflearn_studylist_url)
+        Studylist = BeautifulSoup(StudylistResponse.text,"html.parser")
+        # GetElements from target class name('question-container' in inflearn)
+        elements= Studylist.find_all(class_ = class_name)
+        # GetElementsQuque Within reference_date
+        TargetPageElements = Search_Element_WithInDays(elements, target_class, tag_with_date, reference_date)
+        # Get studylist css, for one time (comparing type of var)
+        if type(Inflearn_studylist_css) == int:
+            Inflearn_studylist_css = Studylist.find_all('link', rel='stylesheet')
 
-    # TargetPageElements only contains within days(7days) ele
-    if TargetPageElements.qsize() == 20:
-        while not TargetPageElements.empty():
+        # TargetPageElements only contains within days(7days) ele
+        if TargetPageElements.qsize() == 20:
+            while not TargetPageElements.empty():
 
-            TargetPageEle = TargetPageElements.get()
-            Inflearn_studies.put(TargetPageEle)
-            
-            # Get Detail Post Link from TargetPageEle(question-container)
-            TargetPageEle = BeautifulSoup(TargetPageEle,'html.parser')
-            DetailPostLink = TargetPageEle.find(class_='e-click-post').get('href')
-            ## Branch => If wanna extract Link from this code, : using for-loop, 
-            DetailPostLink = InflearnSiteURL+DetailPostLink
+                TargetPageEle = TargetPageElements.get()
+                Inflearn_studies.put(TargetPageEle)
+                
+                # Get Detail Post Link from TargetPageEle(question-container)
+                TargetPageEle = BeautifulSoup(TargetPageEle,'html.parser')
+                DetailPostLink = TargetPageEle.find(class_='e-click-post').get('href')
+                ## Branch => If wanna extract Link from this code, : using for-loop, 
+                DetailPostLink = InflearnSiteURL+DetailPostLink
 
-            Inflearn_PostLinkURL.put(DetailPostLink)
-            # Get Detail Post
-            DetailStudyPageResponse = requests.get(DetailPostLink)
-            DetailStudyPage = BeautifulSoup(DetailStudyPageResponse.text,'html.parser')
-            DetailStudyPageBody = DetailStudyPage.find(class_='content__body markdown-body')
-            DetailStudyPageBody = DetailStudyPageBody.prettify()
+                #Checking It is already extracted from target website
+                CheckingTitle= extract_title_from_url(DetailPostLink)
+                if CheckingTitle == Title:
+                    break
+                else:
+                    pass
 
-            Inflearn_PostBodys.put(DetailStudyPageBody)
+                Inflearn_PostLinkURL.put(DetailPostLink)
+                # Get Detail Post
+                DetailStudyPageResponse = requests.get(DetailPostLink)
+                DetailStudyPage = BeautifulSoup(DetailStudyPageResponse.text,'html.parser')
+                DetailStudyPageBody = DetailStudyPage.find(class_='content__body markdown-body')
+                DetailStudyPageBody = DetailStudyPageBody.prettify()
 
-            StudyWriteDate = DetailStudyPage.find_all('span', class_='sub-title sub-title__created-at')
-            # Get post write date from Body
-            for element in StudyWriteDate:
-                WriteDate = element.find('span',class_='sub-title__value').text.strip()
-                StudyWriteDate = WriteDate
-                StudyWriteDate = '20'+StudyWriteDate
-                StudyWriteDate = datetime.strptime(StudyWriteDate, "%Y.%m.%d %H:%M")
-                Inflearn_study_Writedays.put(StudyWriteDate)
+                Inflearn_PostBodys.put(DetailStudyPageBody)
 
-            # Avoding requests limits(It request 20times posts per each loop upon )
+                StudyWriteDate = DetailStudyPage.find_all('span', class_='sub-title sub-title__created-at')
+                # Get post write date from Body
+                for element in StudyWriteDate:
+                    WriteDate = element.find('span',class_='sub-title__value').text.strip()
+                    StudyWriteDate = WriteDate
+                    StudyWriteDate = '20'+StudyWriteDate
+                    StudyWriteDate = datetime.strptime(StudyWriteDate, "%Y.%m.%d %H:%M")
+                    Inflearn_study_Writedays.put(StudyWriteDate)
 
-    # elif TargetPageQueue size smaller than 20, the page has element older than reference_date
-    elif TargetPageElements.qsize() < 20 :
-        while not TargetPageElements.empty():
+                # Avoding requests limits(It request 20times posts per each loop upon )
 
-            TargetPageEle = TargetPageElements.get()
-            Inflearn_studies.put(TargetPageEle)
-            
-            # Get Detail Post Link from TargetPageEle(question-container)
-            TargetPageEle = BeautifulSoup(TargetPageEle,'html.parser')
-            DetailPostLink = TargetPageEle.find(class_='e-click-post').get('href')
-            DetailPostLink = InflearnSiteURL+DetailPostLink
+        # elif TargetPageQueue size smaller than 20, the page has element older than reference_date
+        elif TargetPageElements.qsize() < 20 :
+            while not TargetPageElements.empty():
 
-            Inflearn_PostLinkURL.put(DetailPostLink)
-            # Get Detail Post
-            DetailStudyPageResponse = requests.get(DetailPostLink)
-            DetailStudyPage = BeautifulSoup(DetailStudyPageResponse.text,'html.parser')
-            DetailStudyPageBody = DetailStudyPage.find(class_='content__body markdown-body')
-            DetailStudyPageBody = DetailStudyPageBody.prettify()
+                TargetPageEle = TargetPageElements.get()
+                Inflearn_studies.put(TargetPageEle)
+                
+                # Get Detail Post Link from TargetPageEle(question-container)
+                TargetPageEle = BeautifulSoup(TargetPageEle,'html.parser')
+                DetailPostLink = TargetPageEle.find(class_='e-click-post').get('href')
+                DetailPostLink = InflearnSiteURL+DetailPostLink
 
-            Inflearn_PostBodys.put(DetailStudyPageBody)
+                #Checking It is already extracted from target website
+                CheckingTitle= extract_title_from_url(DetailPostLink)
+                if CheckingTitle == Title:
+                    break
+                else:
+                    pass
 
-            StudyWriteDate = DetailStudyPage.find_all('span', class_='sub-title sub-title__created-at')
+                Inflearn_PostLinkURL.put(DetailPostLink)
+                # Get Detail Post
+                DetailStudyPageResponse = requests.get(DetailPostLink)
+                DetailStudyPage = BeautifulSoup(DetailStudyPageResponse.text,'html.parser')
+                DetailStudyPageBody = DetailStudyPage.find(class_='content__body markdown-body')
+                DetailStudyPageBody = DetailStudyPageBody.prettify()
 
-            # Get post write date from Body
-            for element in StudyWriteDate:
-                WriteDate = element.find('span',class_='sub-title__value').text.strip()
-                StudyWriteDate = WriteDate
-                StudyWriteDate = '20'+StudyWriteDate
-                StudyWriteDate = datetime.strptime(StudyWriteDate, "%Y.%m.%d %H:%M")
-                Inflearn_study_Writedays.put(StudyWriteDate)
+                Inflearn_PostBodys.put(DetailStudyPageBody)
 
-            # Get post css, for one time (comparing type of var)
-            if type(Inflearn_study_post_css) == int:
-                Inflearn_study_post_css = DetailStudyPage.find_all('link', rel='stylesheet')
+                StudyWriteDate = DetailStudyPage.find_all('span', class_='sub-title sub-title__created-at')
 
-            # Avoding requests limits(It request 20times posts per each loop upon )
+                # Get post write date from Body
+                for element in StudyWriteDate:
+                    WriteDate = element.find('span',class_='sub-title__value').text.strip()
+                    StudyWriteDate = WriteDate
+                    StudyWriteDate = '20'+StudyWriteDate
+                    StudyWriteDate = datetime.strptime(StudyWriteDate, "%Y.%m.%d %H:%M")
+                    Inflearn_study_Writedays.put(StudyWriteDate)
 
-        break
+                # Get post css, for one time (comparing type of var)
+                if type(Inflearn_study_post_css) == int:
+                    Inflearn_study_post_css = DetailStudyPage.find_all('link', rel='stylesheet')
 
-table_name = "inflearn_study"
-columns = {
-    'Inflearn_studies': String,
-    'Inflearn_PostLinkURL' : String,
-    'Inflearn_PostBodys' : String,
-    'Inflearn_study_Writedays' : String
-}
+                # Avoding requests limits(It request 20times posts per each loop upon )
 
-data = {
-    'Inflearn_studies': Inflearn_studies,
-    'Inflearn_PostLinkURL' : Inflearn_PostLinkURL,
-    'Inflearn_PostBodys' : Inflearn_PostBodys,
-    'Inflearn_study_Writedays' : Inflearn_study_Writedays
-}
-DynamicTable = create_table(table_name, columns)
-last_row = save_data(data, DynamicTable, database_URL='sqlite:///my_database.db')
-UrlContainTitle = last_row['Inflearn_PostLinkURL']
-#For Checking Duplicate
-Title = extract_title_from_url(UrlContainTitle)
+            break
+
+    table_name = "inflearn_study"
+    columns = {
+        'Inflearn_studies': String,
+        'Inflearn_PostLinkURL' : String,
+        'Inflearn_PostBodys' : String,
+        'Inflearn_study_Writedays' : String
+    }
+
+    data = {
+        'Inflearn_studies': Inflearn_studies,
+        'Inflearn_PostLinkURL' : Inflearn_PostLinkURL,
+        'Inflearn_PostBodys' : Inflearn_PostBodys,
+        'Inflearn_study_Writedays' : Inflearn_study_Writedays
+    }
+    DynamicTable = create_table(table_name, columns)
+    last_row = save_data(data,DynamicTable,database_URL='sqlite:///my_database.db')
+    UrlContainTitle = last_row['Inflearn_PostLinkURL']
+    #For Checking Duplicate
+    Title = extract_title_from_url(UrlContainTitle) 
+
+    time.sleep(20)
 
 # ##Get CSS From target site
 # # element_css = soup.find_all('link', rel='stylesheet')
