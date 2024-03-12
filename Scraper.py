@@ -5,7 +5,10 @@ from datetime import datetime
 from queue import Queue
 from datetime import datetime, timedelta
 from time import sleep
-from DBLoder import create_dynamic_table, load_data_to_database
+from DBsaver import create_table, save_data
+from sqlalchemy import String, Integer
+from urllib.parse import urlparse
+
 
 def TagsScraper(url, tag_names, class_names, target_tags):
     """
@@ -120,6 +123,21 @@ def Search_Element_WithInDays_UsingInnerForLoop(target_class, target_class_In, t
     
     return Result_Queue
     
+def extract_title_from_url(url):
+    # Parse the URL
+    parsed_url = urlparse(url)
+    
+    # Get the path of the URL
+    path = parsed_url.path
+    
+    # Split the path by '/'
+    path_parts = path.split('/')
+    
+    # Extract the last part of the path (title)
+    title = path_parts[-1]
+    
+    return title.replace('-', ' ')
+
 ######################################### Main_Code ################################################
 
 InflearnSiteURL = "https://www.inflearn.com"
@@ -181,16 +199,10 @@ for page in range(1,2) :
                 WriteDate = element.find('span',class_='sub-title__value').text.strip()
                 StudyWriteDate = WriteDate
                 StudyWriteDate = '20'+StudyWriteDate
+                StudyWriteDate = datetime.strptime(StudyWriteDate, "%Y.%m.%d %H:%M")
                 Inflearn_study_Writedays.put(StudyWriteDate)
 
             # Avoding requests limits(It request 20times posts per each loop upon )
-            
-            print(TargetPageEle)
-            print(DetailPostLink)
-            print(DetailStudyPageBody)
-            print(StudyWriteDate)
-
-        
 
     # elif TargetPageQueue size smaller than 20, the page has element older than reference_date
     elif TargetPageElements.qsize() < 20 :
@@ -220,16 +232,12 @@ for page in range(1,2) :
                 WriteDate = element.find('span',class_='sub-title__value').text.strip()
                 StudyWriteDate = WriteDate
                 StudyWriteDate = '20'+StudyWriteDate
+                StudyWriteDate = datetime.strptime(StudyWriteDate, "%Y.%m.%d %H:%M")
                 Inflearn_study_Writedays.put(StudyWriteDate)
 
             # Get post css, for one time (comparing type of var)
             if type(Inflearn_study_post_css) == int:
                 Inflearn_study_post_css = DetailStudyPage.find_all('link', rel='stylesheet')
-
-            print(TargetPageEle)
-            print(DetailPostLink)
-            print(DetailStudyPageBody)
-            print(StudyWriteDate)
 
             # Avoding requests limits(It request 20times posts per each loop upon )
 
@@ -237,10 +245,10 @@ for page in range(1,2) :
 
 table_name = "inflearn_study"
 columns = {
-    'Inflearn_studies': 'String',
-    'Inflearn_PostLinkURL' : 'String',
-    'Inflearn_PostBodys' : 'String',
-    'Inflearn_study_Writedays' : 'String'
+    'Inflearn_studies': String,
+    'Inflearn_PostLinkURL' : String,
+    'Inflearn_PostBodys' : String,
+    'Inflearn_study_Writedays' : String
 }
 
 data = {
@@ -249,10 +257,11 @@ data = {
     'Inflearn_PostBodys' : Inflearn_PostBodys,
     'Inflearn_study_Writedays' : Inflearn_study_Writedays
 }
-
-load_data_to_database(data, table_name, columns, database_url='sqlite:///my_database.db')
-
-
+DynamicTable = create_table(table_name, columns)
+last_row = save_data(data, DynamicTable, database_URL='sqlite:///my_database.db')
+UrlContainTitle = last_row['Inflearn_PostLinkURL']
+#For Checking Duplicate
+Title = extract_title_from_url(UrlContainTitle)
 
 # ##Get CSS From target site
 # # element_css = soup.find_all('link', rel='stylesheet')
