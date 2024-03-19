@@ -117,9 +117,9 @@ def main():
 
         if stopped_due_to_duplicate:
             print("Scraping stopped due to encountering a duplicate title.")
-            break
+            time.sleep(3600) #Stop 1hour
 
-        time.sleep(60)  # Sleep for 60 seconds before scraping again
+        time.sleep(WAIT_TIME)  # Sleep for 60 seconds before scraping again
 
 if __name__ == "__main__":
     main()
