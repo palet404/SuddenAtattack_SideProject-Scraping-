@@ -28,7 +28,7 @@ def create_dynamic_table(table_name, columns):
             setattr(DynamicTable, column_name, column)
             setattr(DynamicTable, f'{column_name}_syn', synonym(column_name))
             
-    return DynamicTable, DynamicTable.__tablename__
+    return DynamicTable
 
 
 def load_data_to_database(queue_dict, table_name, columns, database_url='sqlite:///:memory:'):

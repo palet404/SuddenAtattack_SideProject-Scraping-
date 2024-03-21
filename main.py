@@ -12,8 +12,8 @@ CLASS_NAME = 'question-container'
 TARGET_CLASS = "question__info-detail"
 TAG_WITH_DATE = "span"
 REFERENCE_DATE = 7
-MAX_PAGES = 1
-WAIT_TIME = 20
+MAX_PAGES = 2
+WAIT_TIME = 0
 
 def scrape_inflearn(last_title=None):
     inflearn_studies = Queue()
@@ -35,6 +35,7 @@ def scrape_inflearn(last_title=None):
             detail_post_link = extract_detail_post_link(element)
             if detail_post_link:
                 current_title = extract_title_from_url(detail_post_link)
+                #Check whthere is duplicate
                 if current_title == last_title:
                     stopped_due_to_duplicate = True
                     return (inflearn_studies, inflearn_post_link_url, inflearn_post_bodies, inflearn_study_write_days), stopped_due_to_duplicate
@@ -46,6 +47,7 @@ def scrape_inflearn(last_title=None):
                     inflearn_study_write_days.put(write_date)
 
         #TargetPageQueue size smaller than 20, the page has element older than reference_date
+        #It will not work with Inner page rotate logic.
         if target_page_elements.qsize() < 20:
             break
 
