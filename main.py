@@ -110,9 +110,9 @@ def main():
         }
 
         dynamic_table = create_table(table_name, columns)
-        last_row = save_data(data, dynamic_table, database_URL='sqlite:///my_database.db')
-        if last_row:
-            url_contain_title = last_row['Inflearn_PostLinkURL']
+        first_row = save_data(data, dynamic_table, database_URL='sqlite:///my_database.db')
+        if first_row:
+            url_contain_title = first_row['Inflearn_PostLinkURL']
             last_title = extract_title_from_url(url_contain_title)
 
         if stopped_due_to_duplicate:

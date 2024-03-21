@@ -4,7 +4,6 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy import inspect
 from sqlalchemy.sql import insert
 
-
 Base = declarative_base()
 
 def create_table(table_name, columns):
@@ -33,7 +32,9 @@ def save_data(queue_dict, table, database_URL="sqlite:///:memory:"):
     Session = sessionmaker(bind=engine)
     session = Session()
 
-    last_row = None
+    Queue_Max_size = len(queue_dict)
+    Queue_size = len(queue_dict)
+    first_row = None
 
     while not all(queue.empty() for queue in queue_dict.values()):
         row = {key: queue.get() for key, queue in queue_dict.items()}
@@ -43,10 +44,13 @@ def save_data(queue_dict, table, database_URL="sqlite:///:memory:"):
         # Execute the statement
         session.execute(stmt)
         # Update last_table_row with the first_row
-        
-        last_row = row
+
+        if Queue_size == Queue_Max_size:
+            first_row = row
+
+        Queue_size = Queue_size-1
 
     session.commit()
     session.close()
 
-    return last_row
+    return first_row
