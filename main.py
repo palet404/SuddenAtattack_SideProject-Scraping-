@@ -5,55 +5,32 @@ from datetime import datetime
 from queue import Queue
 from sqlalchemy import String
 from DBsaver import create_table, save_data
-from utils import extract_title_from_url, extract_elements_within_days
+from utils import extract_title_from_url, Is_element_within_days
 
 INFLEARN_SITE_URL = "https://www.inflearn.com"
 CLASS_NAME = 'question-container'
+#CLASS_NAME is tag class name contains study list
 TARGET_CLASS = "question__info-detail"
+#TARGET_CLASS is tag class name contains time string 
 TAG_WITH_DATE = "span"
+#TAG_WITH_DATE is tag contains time string
 REFERENCE_DATE = 7
 MAX_PAGES = 2
 WAIT_TIME = 0
 
-def scrape_inflearn(last_title=None):
-    inflearn_studies = Queue()
-    inflearn_post_link_url = Queue()
-    inflearn_post_bodies = Queue()
-    inflearn_study_write_days = Queue()
-    stopped_due_to_duplicate = False
+inflearn_studies = Queue()
+inflearn_post_link_url = Queue()
+inflearn_post_bodies = Queue()
+inflearn_study_write_days = Queue()
 
-    for page in range(1, MAX_PAGES + 1):
-        inflearn_studylist_url = f'https://www.inflearn.com/community/studies?page={page}&order=recent'
-        studylist_response = requests.get(inflearn_studylist_url)
-        studylist = BeautifulSoup(studylist_response.text, "html.parser")
-        elements = studylist.find_all(class_=CLASS_NAME)
-        target_page_elements = extract_elements_within_days(elements, TARGET_CLASS, TAG_WITH_DATE, REFERENCE_DATE)
+def scrape_inflearn(page):
 
-        while not target_page_elements.empty():
-            # Extract data from element
-            element = target_page_elements.get()
-            detail_post_link = extract_detail_post_link(element)
-            if detail_post_link:
-                current_title = extract_title_from_url(detail_post_link)
-                #Check whthere is duplicate
-                if current_title == last_title:
-                    stopped_due_to_duplicate = True
-                    return (inflearn_studies, inflearn_post_link_url, inflearn_post_bodies, inflearn_study_write_days), stopped_due_to_duplicate
-                post_body, write_date = extract_detail_post_data(detail_post_link)
-                if post_body and write_date:
-                    inflearn_studies.put(element)
-                    inflearn_post_link_url.put(detail_post_link)
-                    inflearn_post_bodies.put(post_body)
-                    inflearn_study_write_days.put(write_date)
+    inflearn_studylist_url = f'https://www.inflearn.com/community/studies?page={page}&order=recent'
+    studylist_response = requests.get(inflearn_studylist_url)
+    studylist = BeautifulSoup(studylist_response.text, "html.parser")
+    elements = studylist.find_all(class_=CLASS_NAME)
 
-        #TargetPageQueue size smaller than 20, the page has element older than reference_date
-        #It will not work with Inner page rotate logic.
-        if target_page_elements.qsize() < 20:
-            break
-
-        time.sleep(WAIT_TIME)
-
-    return (inflearn_studies, inflearn_post_link_url, inflearn_post_bodies, inflearn_study_write_days), stopped_due_to_duplicate
+    return elements
 
 def extract_detail_post_link(element):
     # Extract detail post link from element
@@ -89,37 +66,43 @@ def extract_detail_post_data(detail_post_link):
     return post_body, write_date
 
 def main():
-    last_title = None
+
+    table_name = "inflearn_study"
+
+    columns = {
+                'Inflearn_studies': String,
+                'Inflearn_PostLinkURL': String,
+                'Inflearn_PostBodys': String,
+                'Inflearn_study_Writedays': String
+                }
+    
+    dynamic_table = create_table(table_name, columns)
+
+    page = 1
 
     while True:
-        collected_data, stopped_due_to_duplicate = scrape_inflearn(last_title)
 
-        inflearn_studies, inflearn_post_link_url, inflearn_post_bodies, inflearn_study_write_days = collected_data
+        elements = scrape_inflearn(page)
+        OutOfDate = False
 
-        table_name = "inflearn_study"
-        columns = {
-            'Inflearn_studies': String,
-            'Inflearn_PostLinkURL': String,
-            'Inflearn_PostBodys': String,
-            'Inflearn_study_Writedays': String
-        }
+        for element in elements:
 
-        data = {
-            'Inflearn_studies': inflearn_studies,
-            'Inflearn_PostLinkURL': inflearn_post_link_url,
-            'Inflearn_PostBodys': inflearn_post_bodies,
-            'Inflearn_study_Writedays': inflearn_study_write_days
-        }
+            if Is_element_within_days(element,TARGET_CLASS,TAG_WITH_DATE, REFERENCE_DATE):
+                detail_post_link = extract_detail_post_link(element)
+                post_body, write_date = extract_detail_post_data(detail_post_link)
 
-        dynamic_table = create_table(table_name, columns)
-        first_row = save_data(data, dynamic_table, database_URL='sqlite:///my_database.db')
-        if first_row:
-            url_contain_title = first_row['Inflearn_PostLinkURL']
-            last_title = extract_title_from_url(url_contain_title)
+                row = [element, detail_post_link, post_body, write_date]
+                save_data(row, dynamic_table, database_URL = 'sqlite:///my_database_test.db')
 
-        if stopped_due_to_duplicate:
-            print("Scraping stopped due to encountering a duplicate title.")
-            time.sleep(3600) #Stop 1hour
+            else:
+                OutOfDate = True
+                break
+        
+        if OutOfDate:
+            page = 0
+            time.sleep(3600)
+            
+        page = page + 1
 
         time.sleep(WAIT_TIME)  # Sleep for 60 seconds before scraping again
 

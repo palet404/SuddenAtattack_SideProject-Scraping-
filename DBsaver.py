@@ -26,31 +26,17 @@ def create_table(table_name, columns):
     # Return the dynamically created class
     return table
 
-def save_data(queue_dict, table, database_URL="sqlite:///:memory:"):
+def save_data(row, table, database_URL="sqlite:///:memory:"):
     engine = create_engine(database_URL, echo=True)
     Base.metadata.create_all(engine)
     Session = sessionmaker(bind=engine)
     session = Session()
 
-    Queue_Max_size = len(queue_dict)
-    Queue_size = len(queue_dict)
-    first_row = None
-
-    while not all(queue.empty() for queue in queue_dict.values()):
-        row = {key: queue.get() for key, queue in queue_dict.items()}
-
-        # Construct an insert statement
-        stmt = insert(table).values(**row)
-        # Execute the statement
-        session.execute(stmt)
-        # Update last_table_row with the first_row
-
-        if Queue_size == Queue_Max_size:
-            first_row = row
-
-        Queue_size = Queue_size-1
+    # Construct an insert statement
+    stmt = insert(table).values(**row)
+    # Execute the statement
+    session.execute(stmt)
+    # Update last_table_row with the first_row
 
     session.commit()
     session.close()
-
-    return first_row
