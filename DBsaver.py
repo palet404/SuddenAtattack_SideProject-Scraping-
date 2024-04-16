@@ -1,7 +1,7 @@
-from sqlalchemy import create_engine, Column, Integer, String
+from sqlalchemy import create_engine, Column, Integer, String, MetaData, Table
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy import inspect
+from sqlalchemy.exc import NoSuchTableError, OperationalError
 from sqlalchemy.sql import insert
 
 Base = declarative_base()
@@ -40,3 +40,20 @@ def save_data(row, table, database_URL="sqlite:///:memory:"):
 
     session.commit()
     session.close()
+
+def load_db(full_db_path, table_name):
+    full_db_url = 'sqlite:///' + full_db_path
+    try:
+        engine = create_engine(full_db_url)
+        metadata = MetaData()
+        metadata.reflect(bind=engine)
+        try:
+            load_table = Table(table_name, metadata, autoload=True, autoload_with=engine)
+            return load_table
+        except NoSuchTableError:
+            print(f"Table '{table_name}' does not exist in the database.")
+            return False
+    except OperationalError:
+        print(f"Database '{full_db_path}' does not exist or is not accessible.")
+        return False
+    

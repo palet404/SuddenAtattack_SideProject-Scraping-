@@ -1,10 +1,11 @@
 import time
 import requests
+import os
 from bs4 import BeautifulSoup
 from datetime import datetime
 from queue import Queue
 from sqlalchemy import String
-from DBsaver import create_table, save_data
+from DBsaver import create_table, save_data, load_db
 from utils import extract_title_from_url, Is_element_within_days
 
 INFLEARN_SITE_URL = "https://www.inflearn.com"
@@ -18,10 +19,11 @@ REFERENCE_DATE = 7
 MAX_PAGES = 2
 WAIT_TIME = 0
 
-inflearn_studies = Queue()
-inflearn_post_link_url = Queue()
-inflearn_post_bodies = Queue()
-inflearn_study_write_days = Queue()
+DB_DIRECTORY = ""
+DB_NAME = "Inflearn_DB"
+TABLENAME = "Inflearn_study"
+
+
 
 def scrape_inflearn(page):
 
@@ -66,10 +68,18 @@ def extract_detail_post_data(detail_post_link):
     return post_body, write_date
 
 def main():
+    
+    # Is there DB in directory?
+    full_db_path = os.path.join(DB_DIRECTORY,DB_NAME)
+    check_database_exists = load_db(full_db_path,TABLENAME)
 
-    table_name = "inflearn_study"
+    if check_database_exists :
+        loaded_table = check_database_exists
+        
+    elif  check_database_exists == False : 
+        table_name = "inflearn_study"
 
-    columns = {
+        columns = {
                 'Inflearn_studies': String,
                 'Inflearn_PostLinkURL': String,
                 'Inflearn_PostBodys': String,
