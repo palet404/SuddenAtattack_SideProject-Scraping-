@@ -19,8 +19,8 @@ REFERENCE_DATE = 7
 MAX_PAGES = 2
 WAIT_TIME = 0
 
-DB_DIRECTORY = ""
-DB_NAME = "Inflearn_DB"
+DB_DIRECTORY = "D:\RIAMCoding\SuddenAtattack_SideProject-Scraping-\InflearnStudyDB"
+DB_NAME = "Inflearn_DB.db"
 TABLENAME = "Inflearn_study"
 
 
@@ -36,7 +36,6 @@ def scrape_inflearn(page):
 
 def extract_detail_post_link(element):
     # Extract detail post link from element
-    element = BeautifulSoup(element, 'html.parser')
     detail_post_link = element.find(class_='e-click-post').get('href')
     #It's value is 43. WTF?, the very first code was without 'a', and I don't have idea why it was returns 43
     #It's because it wasn't converted as Beautifulsoup entity. => organize it
@@ -71,12 +70,13 @@ def main():
     
     # Is there DB in directory?
     full_db_path = os.path.join(DB_DIRECTORY,DB_NAME)
-    check_database_exists = load_db(full_db_path,TABLENAME)
+    loaded_table = load_db(full_db_path,TABLENAME)
 
-    if check_database_exists :
-        loaded_table = check_database_exists
+    if loaded_table is not None :
+        inflearn_table = loaded_table
         
-    elif  check_database_exists == False : 
+    elif  loaded_table == None : 
+
         table_name = "inflearn_study"
 
         columns = {
@@ -86,7 +86,7 @@ def main():
                 'Inflearn_study_Writedays': String
                 }
     
-    dynamic_table = create_table(table_name, columns)
+        inflearn_table = create_table(table_name, columns)
 
     page = 1
 
@@ -101,8 +101,16 @@ def main():
                 detail_post_link = extract_detail_post_link(element)
                 post_body, write_date = extract_detail_post_data(detail_post_link)
 
-                row = [element, detail_post_link, post_body, write_date]
-                save_data(row, dynamic_table, database_URL = 'sqlite:///my_database_test.db')
+                element = str(element)
+                detail_post_link = str(detail_post_link)
+                post_body = str(post_body)
+                
+                row = {'Inflearn_studies':element, 
+                       'Inflearn_PostLinkURL':detail_post_link, 
+                       'Inflearn_PostBodys': post_body, 
+                       'Inflearn_study_Writedays': write_date}
+                
+                save_data(row, inflearn_table, database_URL = full_db_path)
 
             else:
                 OutOfDate = True

@@ -27,7 +27,8 @@ def create_table(table_name, columns):
     return table
 
 def save_data(row, table, database_URL="sqlite:///:memory:"):
-    engine = create_engine(database_URL, echo=True)
+    full_db_url = 'sqlite:///' + database_URL
+    engine = create_engine(full_db_url, echo=True)
     Base.metadata.create_all(engine)
     Session = sessionmaker(bind=engine)
     session = Session()
@@ -52,8 +53,9 @@ def load_db(full_db_path, table_name):
             return load_table
         except NoSuchTableError:
             print(f"Table '{table_name}' does not exist in the database.")
-            return False
+            return None
     except OperationalError:
         print(f"Database '{full_db_path}' does not exist or is not accessible.")
-        return False
+        return None
+    
     
