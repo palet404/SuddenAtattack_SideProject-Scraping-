@@ -5,7 +5,7 @@ from bs4 import BeautifulSoup
 from datetime import datetime
 from queue import Queue
 from sqlalchemy import String
-from DBsaver import create_table, save_data, load_db
+from DBsaver import create_table, save_data, load_db, create_session
 from utils import extract_title_from_url, Is_element_within_days
 
 INFLEARN_SITE_URL = "https://www.inflearn.com"
@@ -110,6 +110,11 @@ def main():
                        'Inflearn_PostBodys': post_body, 
                        'Inflearn_study_Writedays': write_date}
                 
+                session = create_session(inflearn_table)
+                existing_row = session.query(inflearn_table).filter_by(**row).first()
+                if existing_row:
+                    print("Row already exists in the table")
+
                 save_data(row, inflearn_table, database_URL = full_db_path)
 
             else:

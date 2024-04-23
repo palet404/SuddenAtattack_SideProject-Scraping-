@@ -35,10 +35,9 @@ def save_data(row, table, database_URL="sqlite:///:memory:"):
 
     # Construct an insert statement
     stmt = insert(table).values(**row)
+
     # Execute the statement
     session.execute(stmt)
-    # Update last_table_row with the first_row
-
     session.commit()
     session.close()
 
@@ -58,4 +57,7 @@ def load_db(full_db_path, table_name):
         print(f"Database '{full_db_path}' does not exist or is not accessible.")
         return None
     
-    
+def create_session(table):
+    Session = sessionmaker(bind=table.bind)
+    session = Session()
+    return session
