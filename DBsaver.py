@@ -23,7 +23,6 @@ def create_table(table_name, columns):
         DynamicTable.__tablename__ = table_name  # Set __tablename__ attribute explicitly
         table = DynamicTable
 
-    # Return the dynamically created class
     return table
 
 def save_data(row, table, database_URL="sqlite:///:memory:"):
@@ -57,7 +56,7 @@ def load_db(full_db_path, table_name):
         print(f"Database '{full_db_path}' does not exist or is not accessible.")
         return None
     
-def create_session(table):
-    Session = sessionmaker(bind=table.bind)
+def create_session(engine):
+    Session = sessionmaker(bind=engine)
     session = Session()
     return session

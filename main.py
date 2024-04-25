@@ -4,7 +4,7 @@ import os
 from bs4 import BeautifulSoup
 from datetime import datetime
 from queue import Queue
-from sqlalchemy import String
+from sqlalchemy import String, create_engine
 from DBsaver import create_table, save_data, load_db, create_session
 from utils import extract_title_from_url, Is_element_within_days
 
@@ -19,7 +19,7 @@ REFERENCE_DATE = 7
 MAX_PAGES = 2
 WAIT_TIME = 0
 
-DB_DIRECTORY = "D:\RIAMCoding\SuddenAtattack_SideProject-Scraping-\InflearnStudyDB"
+DB_DIRECTORY = "C:\RYUCODING\SuddenAtattack_SideProject(Scraping)"
 DB_NAME = "Inflearn_DB.db"
 TABLENAME = "Inflearn_study"
 
@@ -97,6 +97,8 @@ def main():
 
         for element in elements:
 
+            existing_row = False
+
             if Is_element_within_days(element,TARGET_CLASS,TAG_WITH_DATE, REFERENCE_DATE):
                 detail_post_link = extract_detail_post_link(element)
                 post_body, write_date = extract_detail_post_data(detail_post_link)
@@ -110,11 +112,17 @@ def main():
                        'Inflearn_PostBodys': post_body, 
                        'Inflearn_study_Writedays': write_date}
                 
-                session = create_session(inflearn_table)
-                existing_row = session.query(inflearn_table).filter_by(**row).first()
+                full_engine_path = 'sqlite:///' + full_db_path
+                engine = create_engine(full_engine_path)
+                session = create_session(engine)
+                try :
+                    existing_row = session.query(inflearn_table).filter_by(**row).first()
+                except Exception as e :
+                    print(f'error occured {e}')
+
                 if existing_row:
                     print("Row already exists in the table")
-
+                    continue
                 save_data(row, inflearn_table, database_URL = full_db_path)
 
             else:
