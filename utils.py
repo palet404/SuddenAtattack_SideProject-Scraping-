@@ -45,3 +45,13 @@ def extract_title_from_url(url):
     title = path_parts[-1]
     
     return title.replace('-', ' ')
+
+
+def extract_base_url(detail_post_url):
+    # 입력된 URL에서 마지막 슬래시('/')의 인덱스를 찾습니다.
+    last_slash_index = detail_post_url.rfind('/')
+    
+    # 마지막 슬래시('/')의 인덱스 이전까지의 부분을 반환합니다.
+    base_url = detail_post_url[:last_slash_index + 1]  # 마지막 슬래시('/')도 포함하기 위해 +1을 합니다.
+    
+    return base_url

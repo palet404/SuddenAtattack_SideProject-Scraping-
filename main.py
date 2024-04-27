@@ -19,7 +19,7 @@ REFERENCE_DATE = 7
 MAX_PAGES = 2
 WAIT_TIME = 0
 
-DB_DIRECTORY = "C:\RYUCODING\SuddenAtattack_SideProject(Scraping)"
+DB_DIRECTORY = r"C:\Users\User\SuddenAtattack_SideProject_Scraping"
 DB_NAME = "Inflearn_DB.db"
 TABLENAME = "Inflearn_study"
 
@@ -103,21 +103,34 @@ def main():
                 detail_post_link = extract_detail_post_link(element)
                 post_body, write_date = extract_detail_post_data(detail_post_link)
 
+                #string data sholud be prettified for be used as inner HTML(PostBody is already prettified)
+                element = element.prettify()
+
                 element = str(element)
-                detail_post_link = str(detail_post_link)
                 post_body = str(post_body)
                 
                 row = {'Inflearn_studies':element, 
                        'Inflearn_PostLinkURL':detail_post_link, 
-                       'Inflearn_PostBodys': post_body, 
+                       'Inflearn_PostBodys': post_body,
                        'Inflearn_study_Writedays': write_date}
+                
+                last_url = detail_post_link.rfind('/')
+                base_url = detail_post_link[:last_url + 1]
                 
                 full_engine_path = 'sqlite:///' + full_db_path
                 engine = create_engine(full_engine_path)
                 session = create_session(engine)
+
                 try :
-                    existing_row = session.query(inflearn_table).filter_by(**row).first()
+                    # comparing element in db with post link url(base url)
+                    # editing post it's base url doesn't change that is why using it for comparing method  
+                    existing_row = session.query(inflearn_table).filter(inflearn_table.c.Inflearn_PostLinkURL.like(f'{base_url}%')).first()
+                    session.execute(existing_row)
+                    session.commit()
+                    session.close()
+
                 except Exception as e :
+                    #For passing fist generate of table
                     print(f'error occured {e}')
 
                 if existing_row:
