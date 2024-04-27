@@ -66,6 +66,44 @@ def extract_detail_post_data(detail_post_link):
 
     return post_body, write_date
 
+#postdata = class_ = 'content__body markdown-body'
+# editdate_ele = detail_page.find('span', class_ = 'sub-title sub-title__updated-at')
+
+def get_page_elements(detail_page, ele_type) :
+
+    '''
+    detail_page is response of each detail study post URL\n
+    ele_type = postbody, write_date, edit_date\n
+    postbody is prettified in function\n
+    '''
+
+    detail_page = BeautifulSoup(detail_page)
+
+    if ele_type == 'postbody' :
+        postbody = detail_page.find(class_='content__body markdown-body')
+        postbody = postbody.prettify()
+        return postbody
+
+    elif ele_type == 'write_date' :
+        ele_write_date = detail_page.find('span', class_='sub-title sub-title__created-at')
+        write_date_str = ele_write_date.find('span', class_='sub-title__value').text.strip()
+        write_date = datetime.strptime('20' + write_date_str, "%Y.%m.%d %H:%M")
+        return write_date
+    
+    elif ele_type == 'edite_date' :
+
+        try :
+            ele_edit_date = detail_page.find('span', class_='sub-title sub-title__updated-at')
+            edit_date_str = ele_edit_date.find('span', class_='sub-title__value').text.strip()
+            edit_date = datetime.strptime('20' + edit_date_str, "%Y.%m.%d %H:%M")
+        except :
+            print("It post isn't edited !")
+            edit_date = False
+
+        return edit_date
+
+
+
 def main():
     
     # Is there DB in directory?
@@ -80,10 +118,11 @@ def main():
         table_name = "inflearn_study"
 
         columns = {
-                'Inflearn_studies': String,
-                'Inflearn_PostLinkURL': String,
-                'Inflearn_PostBodys': String,
-                'Inflearn_study_Writedays': String
+                'Inflearn_studies': {'type' : String},
+                'Inflearn_PostLinkURL': {'type' : String},
+                'Inflearn_PostBodys': {'type' : String},
+                'Inflearn_study_Writedays': {'type' : String},
+                'Inflearn_study_editdays' : {'type' : String, 'nullable' : True}
                 }
     
         inflearn_table = create_table(table_name, columns)
@@ -101,7 +140,12 @@ def main():
 
             if Is_element_within_days(element,TARGET_CLASS,TAG_WITH_DATE, REFERENCE_DATE):
                 detail_post_link = extract_detail_post_link(element)
-                post_body, write_date = extract_detail_post_data(detail_post_link)
+
+                detail_page = requests.get(detail_post_link)
+
+                post_body = get_page_elements(detail_page,ele_type='postbody')
+                write_date = get_page_elements(detail_page,ele_type='write_date')
+                edit_date = get_page_elements(detail_page)
 
                 #string data sholud be prettified for be used as inner HTML(PostBody is already prettified)
                 element = element.prettify()
@@ -132,11 +176,6 @@ def main():
                 except Exception as e :
                     #For passing fist generate of table
                     print(f'error occured {e}')
-
-                if existing_row:
-                    print("Row already exists in the table")
-                    continue
-                save_data(row, inflearn_table, database_URL = full_db_path)
 
             else:
                 OutOfDate = True

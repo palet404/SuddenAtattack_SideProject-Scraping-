@@ -15,9 +15,11 @@ def create_table(table_name, columns):
     else:
         # Create table columns dynamically
         attrs = {'__tablename__': table_name, 'id': Column(Integer, primary_key=True)}
-        for name, col_type in columns.items():
-            attrs[name] = Column(col_type)
-
+        for name, col_info in columns.items():
+            col_type = col_info.get('type', String)  # Default type is String
+            nullable = col_info.get('nullable', False)  # Default is False
+            attrs[name] = Column(col_type, nullable=nullable)
+  
         # Create the class dynamically with Base as the parent
         DynamicTable = type('DynamicTable', (Base,), attrs)
         DynamicTable.__tablename__ = table_name  # Set __tablename__ attribute explicitly
