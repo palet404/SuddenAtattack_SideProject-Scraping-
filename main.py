@@ -19,7 +19,7 @@ REFERENCE_DATE = 7
 MAX_PAGES = 2
 WAIT_TIME = 0
 
-DB_DIRECTORY = r"C:\Users\User\SuddenAtattack_SideProject_Scraping"
+DB_DIRECTORY = r"c:\RYUCODING\SuddenAtattack_SideProject(Scraping)"
 DB_NAME = "Inflearn_DB.db"
 TABLENAME = "Inflearn_study"
 
@@ -77,7 +77,7 @@ def get_page_elements(detail_page, ele_type) :
     postbody is prettified in function\n
     '''
 
-    detail_page = BeautifulSoup(detail_page)
+    detail_page = BeautifulSoup(detail_page.text, 'html.parser')
 
     if ele_type == 'postbody' :
         postbody = detail_page.find(class_='content__body markdown-body')
@@ -139,13 +139,12 @@ def main():
             existing_row = False
 
             if Is_element_within_days(element,TARGET_CLASS,TAG_WITH_DATE, REFERENCE_DATE):
+                
                 detail_post_link = extract_detail_post_link(element)
-
                 detail_page = requests.get(detail_post_link)
-
                 post_body = get_page_elements(detail_page,ele_type='postbody')
                 write_date = get_page_elements(detail_page,ele_type='write_date')
-                edit_date = get_page_elements(detail_page)
+                edit_date = get_page_elements(detail_page, ele_type ='edit_date')
 
                 #string data sholud be prettified for be used as inner HTML(PostBody is already prettified)
                 element = element.prettify()
@@ -156,7 +155,8 @@ def main():
                 row = {'Inflearn_studies':element, 
                        'Inflearn_PostLinkURL':detail_post_link, 
                        'Inflearn_PostBodys': post_body,
-                       'Inflearn_study_Writedays': write_date}
+                       'Inflearn_study_writedate': write_date,
+                       'Inflearn_study_editdate' : edit_date}
                 
                 last_url = detail_post_link.rfind('/')
                 base_url = detail_post_link[:last_url + 1]
@@ -168,10 +168,17 @@ def main():
                 try :
                     # comparing element in db with post link url(base url)
                     # editing post it's base url doesn't change that is why using it for comparing method  
-                    existing_row = session.query(inflearn_table).filter(inflearn_table.c.Inflearn_PostLinkURL.like(f'{base_url}%')).first()
+                    existing_row = session.query(inflearn_table).filter(inflearn_table.Inflearn_PostLinkURL.like(f'{base_url}%')).first()
                     session.execute(existing_row)
                     session.commit()
                     session.close()
+
+                    # avoid duplicated ele, and update items
+                    if not existing_row or edit_date != existing_row.Inflearn_study_editdate :
+                        save_data(row, inflearn_table, full_db_path)
+                    else:
+                        # Already exists and not edited, skip
+                        pass
 
                 except Exception as e :
                     #For passing fist generate of table
