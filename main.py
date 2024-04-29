@@ -19,7 +19,7 @@ REFERENCE_DATE = 7
 MAX_PAGES = 2
 WAIT_TIME = 0
 
-DB_DIRECTORY = r"c:\RYUCODING\SuddenAtattack_SideProject(Scraping)"
+DB_DIRECTORY = r"C:\Users\User\SuddenAtattack_SideProject_Scraping"
 DB_NAME = "Inflearn_DB.db"
 TABLENAME = "Inflearn_study"
 
@@ -207,8 +207,18 @@ def main():
 
                 except requests.exceptions.RequestException as e :
                     if inflearn_table is not None:
-                        delet_row = session.query(inflearn_table).filter(inflearn_table.c.Inflearn_postlinkurl == f'{ele}').delete()
-                        session.execute(delet_row)
+                        try : 
+                            engine = create_engine(full_engine_path)
+                            session = create_session(engine)
+                            condtion =  inflearn_table.c.Inflearn_postlinkurl == ele
+
+                            deleted_row = session.query(inflearn_table).filter(condtion).delete()
+                            session.execute(deleted_row)
+                            print(f"Deleted {deleted_row} row(s) where Inflearn_postlinkurl = {ele}.")
+                        
+                        except Exception as e :
+                            
+
                         session.commit()
                         session.close()
 
