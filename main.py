@@ -19,11 +19,9 @@ REFERENCE_DATE = 7
 MAX_PAGES = 2
 WAIT_TIME = 0
 
-DB_DIRECTORY = r"c:\RYUCODING\SuddenAtattack_SideProject(Scraping)"
+DB_DIRECTORY = r"d:\RIAMCoding\SuddenAtattack_SideProject-Scraping-"
 DB_NAME = "Inflearn_DB.db"
 TABLENAME = "Inflearn_study"
-
-
 
 def scrape_inflearn(page):
 
@@ -119,11 +117,12 @@ def main():
 
         columns = {
                 'Inflearn_studies': {'type' : String},
-                'Inflearn_PostLinkURL': {'type' : String},
-                'Inflearn_PostBodys': {'type' : String},
-                'Inflearn_study_Writedays': {'type' : String},
-                'Inflearn_study_editdays' : {'type' : String, 'nullable' : True}
+                'Inflearn_postlinkurl': {'type' : String},
+                'Inflearn_postbody': {'type' : String},
+                'Inflearn_study_writedate': {'type' : String},
+                'Inflearn_study_editdate' : {'type' : String, 'nullable' : True}
                 }
+    
     
         inflearn_table = create_table(table_name, columns)
 
@@ -153,8 +152,8 @@ def main():
                 post_body = str(post_body)
                 
                 row = {'Inflearn_studies':element, 
-                       'Inflearn_PostLinkURL':detail_post_link, 
-                       'Inflearn_PostBodys': post_body,
+                       'Inflearn_postlinkurl':detail_post_link, 
+                       'Inflearn_postbody': post_body,
                        'Inflearn_study_writedate': write_date,
                        'Inflearn_study_editdate' : edit_date}
                 
@@ -168,21 +167,27 @@ def main():
                 try :
                     # comparing element in db with post link url(base url)
                     # editing post it's base url doesn't change that is why using it for comparing method  
-                    existing_row = session.query(inflearn_table).filter(inflearn_table.Inflearn_PostLinkURL.like(f'{base_url}%')).first()
+                    existing_row = session.query(inflearn_table).filter(inflearn_table.c.Inflearn_postlinkurl.like(f'{base_url}%')).first()
                     session.execute(existing_row)
                     session.commit()
                     session.close()
 
-                    # avoid duplicated ele, and update items
-                    if not existing_row or edit_date != existing_row.Inflearn_study_editdate :
-                        save_data(row, inflearn_table, full_db_path)
-                    else:
-                        # Already exists and not edited, skip
-                        pass
-
                 except Exception as e :
                     #For passing fist generate of table
                     print(f'error occured {e}')
+
+
+                # avoid duplicated ele
+
+                if existing_row : 
+                    print("Row already exists in the table")
+                    continue
+                #Update item
+                # when first loop or exisiting row is False, It coulnd't use Inflearn_study_editdate method
+                # since it's not sqlalchemy entity
+                elif existing_row and existing_row.Inflearn_study_editdate :
+                    save_data(row, inflearn_table, full_db_path)
+                save_data(row, inflearn_table, full_db_path)
 
             else:
                 OutOfDate = True
