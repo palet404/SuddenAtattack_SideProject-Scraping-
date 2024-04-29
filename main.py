@@ -19,7 +19,7 @@ REFERENCE_DATE = 7
 MAX_PAGES = 2
 WAIT_TIME = 0
 
-DB_DIRECTORY = r"d:\RIAMCoding\SuddenAtattack_SideProject-Scraping-"
+DB_DIRECTORY = r"c:\RYUCODING\SuddenAtattack_SideProject(Scraping)"
 DB_NAME = "Inflearn_DB.db"
 TABLENAME = "Inflearn_study"
 
@@ -63,9 +63,6 @@ def extract_detail_post_data(detail_post_link):
         print(f"Error scraping detail post: {e}")
 
     return post_body, write_date
-
-#postdata = class_ = 'content__body markdown-body'
-# editdate_ele = detail_page.find('span', class_ = 'sub-title sub-title__updated-at')
 
 def get_page_elements(detail_page, ele_type) :
 
@@ -176,7 +173,6 @@ def main():
                     #For passing fist generate of table
                     print(f'error occured {e}')
 
-
                 # avoid duplicated ele
 
                 if existing_row : 
@@ -185,7 +181,7 @@ def main():
                 #Update item
                 # when first loop or exisiting row is False, It coulnd't use Inflearn_study_editdate method
                 # since it's not sqlalchemy entity
-                elif existing_row and existing_row.Inflearn_study_editdate :
+                elif existing_row and existing_row.c.Inflearn_study_editdate :
                     save_data(row, inflearn_table, full_db_path)
                 save_data(row, inflearn_table, full_db_path)
 
@@ -193,10 +189,33 @@ def main():
                 OutOfDate = True
                 break
         
+        #Check all post isn't deleted or not
+        inflearn_table = load_db(full_db_path,TABLENAME)
+        full_engine_path = 'sqlite:///' + full_db_path
+        
+        if inflearn_table is not None:
+            engine = create_engine(full_engine_path)
+            session = create_session(engine)
+
+            column_to_fetch = inflearn_table.c.Inflearn_postlinkurl
+            column_ele = session.query(column_to_fetch).all()
+
+        
+            for ele in column_ele :
+                try : 
+                    resposne = requests.get(ele)
+
+                except requests.exceptions.RequestException as e :
+                    if inflearn_table is not None:
+                        delet_row = session.query(inflearn_table).filter(inflearn_table.c.Inflearn_postlinkurl == f'{ele}').delete()
+                        session.execute(delet_row)
+                        session.commit()
+                        session.close()
+
         if OutOfDate:
             page = 0
             time.sleep(3600)
-            
+
         page = page + 1
 
         time.sleep(WAIT_TIME)  # Sleep for 60 seconds before scraping again
