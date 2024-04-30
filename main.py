@@ -19,7 +19,7 @@ REFERENCE_DATE = 7
 MAX_PAGES = 2
 WAIT_TIME = 0
 
-DB_DIRECTORY = r"C:\Users\User\SuddenAtattack_SideProject_Scraping"
+DB_DIRECTORY = r"d:\RIAMCoding\SuddenAtattack_SideProject-Scraping-"
 DB_NAME = "Inflearn_DB.db"
 TABLENAME = "Inflearn_study"
 
@@ -165,13 +165,12 @@ def main():
                     # comparing element in db with post link url(base url)
                     # editing post it's base url doesn't change that is why using it for comparing method  
                     existing_row = session.query(inflearn_table).filter(inflearn_table.c.Inflearn_postlinkurl.like(f'{base_url}%')).first()
-                    session.execute(existing_row)
                     session.commit()
                     session.close()
 
                 except Exception as e :
                     #For passing fist generate of table
-                    print(f'error occured {e}')
+                    print(f'error occured : {e}')
 
                 # avoid duplicated ele
 
@@ -189,38 +188,40 @@ def main():
                 OutOfDate = True
                 break
         
-        #Check all post isn't deleted or not
+        # Check all post isn't deleted or not
+        # Load database and table, Importing table from db
         inflearn_table = load_db(full_db_path,TABLENAME)
-        full_engine_path = 'sqlite:///' + full_db_path
-        
-        if inflearn_table is not None:
-            engine = create_engine(full_engine_path)
-            session = create_session(engine)
+        engine = create_engine(full_engine_path)
+        session = create_session(engine)
+        column_to_fetch = inflearn_table.c.Inflearn_postlinkurl
+        column_ele = session.query(column_to_fetch).all()
 
-            column_to_fetch = inflearn_table.c.Inflearn_postlinkurl
-            column_ele = session.query(column_to_fetch).all()
+        # Checking ele in table still in target website(inflearn)
+        for ele in column_ele :
+            ele = ele[0]
 
-        
-            for ele in column_ele :
+            resposne = requests.get(ele)
+            #Even it's post is deleted, webpage give response 200, since it's response is detail page,
+            #Check it by get_page_elements
+            Is_deleted = get_page_elements(resposne,'writed_date')
+
+            if Is_deleted is None :
                 try : 
-                    resposne = requests.get(ele)
+                    engine = create_engine(full_engine_path)
+                    session = create_session(engine)
+                    condtion =  inflearn_table.c.Inflearn_postlinkurl == ele
 
-                except requests.exceptions.RequestException as e :
-                    if inflearn_table is not None:
-                        try : 
-                            engine = create_engine(full_engine_path)
-                            session = create_session(engine)
-                            condtion =  inflearn_table.c.Inflearn_postlinkurl == ele
-
-                            deleted_row = session.query(inflearn_table).filter(condtion).delete()
-                            session.execute(deleted_row)
-                            print(f"Deleted {deleted_row} row(s) where Inflearn_postlinkurl = {ele}.")
+                    deleted_row = session.query(inflearn_table).filter(condtion).delete()
+                    session.commit()
+                    print(f"Deleted {deleted_row} row(s) where Inflearn_postlinkurl = {ele}.")
                         
-                        except Exception as e :
-                            
-
-                        session.commit()
-                        session.close()
+                except Exception as e :
+                    print(f"An error occurred: {e}")
+                    session.rollback()
+                    
+                finally:
+                    session.commit()
+                    session.close()
 
         if OutOfDate:
             page = 0
